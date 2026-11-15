@@ -22,7 +22,8 @@ summary {min-height:48px;display:flex;align-items:center;cursor:pointer;color:#d
 summary::before {content:"▸";margin-right:8px}
 details[open] summary::before {content:"▾"}
 .profile {white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;padding:4px;margin:0}
-output {position:sticky;top:0;display:block;z-index:1;background:#111421;color:#c4f5ce;padding:6px 0;min-height:36px;font-size:14px;overflow-wrap:anywhere}
+output {display:block;color:#c4f5ce;font-size:14px;overflow-wrap:anywhere}
+.search {margin:16px 0 8px} .search label {display:block;font-weight:700;margin-bottom:6px} .search-controls {display:flex;gap:8px} .search input {min-width:0;flex:1;min-height:48px;padding:10px 12px;border:1px solid #a9a1bc;border-radius:9px;background:#fff;color:#171326;font:16px system-ui} .search button {padding:0 14px} .result-count {margin:8px 0;color:#ddd8ee;font-size:14px} .copy-status {margin:8px 0 0;color:#c4f5ce;font-size:14px;overflow-wrap:anywhere} .copy-status:empty {display:none} [hidden] {display:none !important} @media (max-width:360px) {body {padding:12px 10px} h1 {font-size:21px} .card-header {gap:10px}}
 .card-header {display:flex;align-items:center;gap:12px;margin-bottom:8px}
 .card-header h2 {margin:0;min-width:0}
 .icon-button {width:64px;height:64px;flex:none;display:block;padding:0;background:#373c53;overflow:hidden}
@@ -35,7 +36,7 @@ dialog img {display:block;width:100%;max-height:56vh;object-fit:contain}
 </style>
 <h1>Pococha1012｜プロフィールコピー</h1>
 <p class="note">40件 · 文字数は空白と改行も含みます。小話は創作例です。アイコンをタップすると拡大できます。</p>
-<output id="status" aria-live="polite"></output>
+<div class="search"><label for="search">名前・本文を検索</label><div class="search-controls"><input id="search" type="search" placeholder="名前やキーワード" autocomplete="off"><button id="clear-search" type="button">クリア</button></div></div><p class="result-count" id="result-count" aria-live="polite"></p>
 <ol id="names"></ol>
 <dialog id="icon-dialog" aria-labelledby="icon-title">
   <h2 id="icon-title"></h2>
@@ -82,7 +83,16 @@ function iconButton(name, index) {
 }
 
 const list = document.getElementById('names');
-const status = document.getElementById('status');
+const search = document.getElementById('search');
+const resultCount = document.getElementById('result-count');
+function normalize(value) { return value.normalize('NFKC').toLocaleLowerCase('ja'); }
+function filterEntries() {
+  const query = normalize(search.value.trim()); let count = 0;
+  list.querySelectorAll('li').forEach(row => { const matches = !query || row.dataset.search.includes(query); row.hidden = !matches; if (matches) count++; });
+  resultCount.textContent = count + '件表示' + (query ? ' / 全' + entries.length + '件' : '');
+}
+search.addEventListener('input', filterEntries);
+document.getElementById('clear-search').addEventListener('click', () => { search.value = ''; filterEntries(); search.focus(); });
 const segmenter = typeof Intl.Segmenter === 'function'
   ? new Intl.Segmenter('ja', {granularity: 'grapheme'})
   : null;
@@ -93,6 +103,8 @@ function copyButton(label, name, value) {
   button.textContent = label + 'をコピー';
   button.setAttribute('aria-label', name + 'の' + button.textContent);
   button.addEventListener('click', async () => {
+    const feedback = button.closest('li').querySelector('.copy-status');
+    feedback.textContent = '';
     try {
       await navigator.clipboard.writeText(value);
     } catch {
@@ -119,17 +131,18 @@ function copyButton(label, name, value) {
         const selection = window.getSelection();
         selection.removeAllRanges();
         selection.addRange(range);
-        status.textContent = label + 'を選択しました。長押しやメニューからコピーしてください。';
+        feedback.textContent = label + 'を選択しました。長押しやメニューからコピーしてください。';
         return;
       }
     }
-    status.textContent = name + 'の' + label + 'をコピーしました';
+    feedback.textContent = label + 'をコピーしました';
   });
   return button;
 }
 
 entries.forEach(([name, profile], index) => {
   const row = document.createElement('li');
+  row.dataset.search = normalize(name + ' ' + profile);
   const title = document.createElement('h2');
   const nickname = document.createElement('span');
   nickname.className = 'nickname';
@@ -153,8 +166,12 @@ entries.forEach(([name, profile], index) => {
   const header = document.createElement('div');
   header.className = 'card-header';
   header.append(iconButton(name, index), title);
-  row.append(header, actions, details);
+  const feedback = document.createElement('p');
+  feedback.className = 'copy-status';
+  feedback.setAttribute('role', 'status');
+  row.append(header, actions, feedback, details);
   list.append(row);
 });
+filterEntries();
 </script>
 </html>
