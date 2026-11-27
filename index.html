@@ -554,7 +554,33 @@ function buildRow(index) {
   return row;
 }
 
-entries.forEach((_, index) => list.append(buildRow(index)));
+function shuffle(items) {
+  for (let end = items.length - 1; end > 0; end--) {
+    const pick = Math.floor(Math.random() * (end + 1));
+    [items[end], items[pick]] = [items[pick], items[end]];
+  }
+  return items;
+}
+
+function reshuffleList() {
+  const focused = document.activeElement;
+  list.append(...shuffle([...list.children]));
+  if (list.contains(focused)) focused.focus({preventScroll: true});
+}
+
+const initialOrder = shuffle(entries.map((_, index) => index));
+list.append(...initialOrder.map(buildRow));
 filterEntries();
+
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+if (standalone) {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') reshuffleList();
+  });
+} else {
+  window.addEventListener('pageshow', event => {
+    if (event.persisted) reshuffleList();
+  });
+}
 </script>
 </html>
