@@ -27,6 +27,11 @@ details[open] summary::before {content:"▾"}
 .family-fields {margin:0 0 8px}
 .family-fields dt {font-size:14px;color:#ddd8ee;margin:4px 0 0}
 .family-fields dd {padding-inline:0}
+.family-identity {display:flex;align-items:center;gap:12px}
+.family-name {min-width:0}
+.family-image-button {display:block;flex:none;width:76px;padding:0;overflow:hidden;background:#373c53;color:#fff}
+.family-image-button img {display:block;width:76px;height:76px;object-fit:cover}
+.family-image-button span {display:block;padding:4px 0;font-size:12px}
 .family-intro {margin:0}
 .family .actions {grid-template-columns:minmax(0,1fr);margin-bottom:8px}
 .family .actions button {padding:8px;overflow-wrap:anywhere}
@@ -136,22 +141,18 @@ const iconDownload = document.getElementById('icon-download');
 
 document.getElementById('icon-close').addEventListener('click', () => iconDialog.close());
 
-function iconButton(name, index) {
-  const filename = icons[index];
-  const number = String(index + 1).padStart(2, '0');
+function imageButton(title, thumbnail, url, filename) {
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = 'icon-button';
-  button.setAttribute('aria-label', name + 'のアイコンを開く');
+  button.setAttribute('aria-label', title + 'を開く');
   const image = document.createElement('img');
   image.alt = '';
   image.loading = 'lazy';
-  image.src = './thumbnails/' + number + '.webp';
+  image.src = thumbnail;
   button.append(image);
   button.addEventListener('click', () => {
-    const url = './icons/' + number + '.png';
-    iconTitle.textContent = name + 'のアイコン';
-    iconPreview.alt = iconTitle.textContent;
+    iconTitle.textContent = title;
+    iconPreview.alt = title;
     iconPreview.src = url;
     iconDownload.href = url;
     iconDownload.download = filename;
@@ -294,7 +295,7 @@ function buildCorePerkTable(perks) {
   return table;
 }
 
-function buildFamilyDetails(name, familyName, familyDescription, perks) {
+function buildFamilyDetails(name, familyName, familyDescription, perks, number) {
   const details = document.createElement('details');
   details.className = 'family';
   const summary = document.createElement('summary');
@@ -307,9 +308,19 @@ function buildFamilyDetails(name, familyName, familyDescription, perks) {
   const nameLabel = document.createElement('dt');
   nameLabel.textContent = 'ファミリー名';
   const nameValue = document.createElement('dd');
-  nameValue.className = 'family-value';
-  nameValue.tabIndex = -1;
-  nameValue.textContent = familyName;
+  nameValue.className = 'family-value family-identity';
+  const nameText = document.createElement('span');
+  nameText.className = 'family-name';
+  nameText.tabIndex = -1;
+  nameText.textContent = familyName;
+  const imagePath = './family-images/' + number;
+  const preview = imageButton(familyName + 'のファミリー画像', imagePath + '.webp',
+    imagePath + '.png', number + '-' + familyName + '.png');
+  preview.className = 'family-image-button';
+  const previewLabel = document.createElement('span');
+  previewLabel.textContent = '画像を開く';
+  preview.append(previewLabel);
+  nameValue.append(preview, nameText);
 
   const descriptionLabel = document.createElement('dt');
   descriptionLabel.textContent = 'ファミリー説明';
@@ -324,7 +335,7 @@ function buildFamilyDetails(name, familyName, familyDescription, perks) {
     familyDescription, '', '【コア特典】',
     ...perks.map(([tier, title, detail]) => tier + ' ' + title + '｜' + detail)
   ].join('\n');
-  const nameCopy = copyButton('ファミリー名', name, nameValue);
+  const nameCopy = copyButton('ファミリー名', name, nameText);
   nameCopy.className = 'family-name-copy';
   actions.append(copyButton('ファミリー説明', name, description, {
     copyText,
@@ -342,13 +353,14 @@ function buildFamilyDetails(name, familyName, familyDescription, perks) {
 function buildRow(index) {
   const [name, profile] = loadEntry(index);
   const [, , familyName, familyDescription, perks] = entries[index];
+  const number = icons[index].slice(0, 2);
   const row = document.createElement('li');
   const title = document.createElement('h2');
   const nickname = document.createElement('span');
   nickname.className = 'nickname';
   nickname.tabIndex = -1;
   nickname.textContent = name;
-  title.append(String(index + 1).padStart(2, '0') + '　', nickname);
+  title.append(number + '　', nickname);
 
   const actions = document.createElement('div');
   actions.className = 'actions';
@@ -365,7 +377,10 @@ function buildRow(index) {
   actions.append(copyButton('名前', name, nickname), copyButton('本文', name, body));
   const header = document.createElement('div');
   header.className = 'card-header';
-  header.append(iconButton(name, index), title);
+  const profileIcon = imageButton(name + 'のアイコン', './thumbnails/' + number + '.webp',
+    './icons/' + number + '.png', icons[index]);
+  profileIcon.className = 'icon-button';
+  header.append(profileIcon, title);
   const feedback = document.createElement('p');
   feedback.className = 'copy-status';
   feedback.setAttribute('role', 'status');
@@ -381,7 +396,7 @@ function buildRow(index) {
     editError.textContent = '';
     editDialog.showModal();
   });
-  row.append(header, actions, feedback, details, buildFamilyDetails(name, familyName, familyDescription, perks), edit);
+  row.append(header, actions, feedback, details, buildFamilyDetails(name, familyName, familyDescription, perks, number), edit);
   return row;
 }
 
